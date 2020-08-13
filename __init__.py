@@ -51,6 +51,12 @@ ringSpeak = {
 class LedRing(MycroftSkill):
     def __init__(self):
         MycroftSkill.__init__(self)
+        # Define zmq socket
+        self.context = zmq.Context()
+        # Create a Pusher socket
+        self.socket = self.context.socket(zmq.PUSH)
+        # Connect Pusher to configuration socket
+        self.socket.connect('tcp://{0}:{1}'.format(matrix_ip, everloop_port))
 
     def initialize(self):
         self.add_event('recognizer_loop:wakeword',
@@ -63,6 +69,9 @@ class LedRing(MycroftSkill):
                        self.handler_audio_output_start)
         self.add_event('recognizer_loop:audio_output_end',
                        self.handler_audio_output_end)
+        self.add_event('mycroft.stop',
+                        self.handler_mycroft_stop)
+
 
     """
     Control Matrix Voice LEDs
@@ -73,12 +82,6 @@ class LedRing(MycroftSkill):
             with integer value (0-255).
     """
     def ring(self, ledCount, ledOn):
-        # Define zmq socket
-        context = zmq.Context()
-        # Create a Pusher socket
-        socket = context.socket(zmq.PUSH)
-        # Connect Pusher to configuration socket
-        socket.connect('tcp://{0}:{1}'.format(matrix_ip, everloop_port))
         # Create a new driver config
         driver_config_proto = driver_pb2.DriverConfig()
         # Create an empty Everloop image
@@ -102,7 +105,8 @@ class LedRing(MycroftSkill):
         # Store the Everloop image in driver configuration
         driver_config_proto.image.led.extend(image)
         # Send driver configuration through ZMQ socket
-        socket.send(driver_config_proto.SerializeToString())
+        self.socket.send(driver_config_proto.SerializeToString())
+
 
     def handler_wakeword(self, message):
         self.ring(led_count, ringOn)
@@ -119,7 +123,13 @@ class LedRing(MycroftSkill):
     def handler_audio_output_end(self, message):
         self.ring(led_count, ringOff)
 
+    def handler_mycroft_stop(self, message):
+        self.ring(led_count, ringOff)
 
+    def shutdown(self):
+        self.socket.close()
+        self.context.term
+        self.log.debug("The ZMQ socket and context have been closed.")
 
 def create_skill():
     return LedRing()
