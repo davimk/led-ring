@@ -48,14 +48,15 @@ SPEAK = {
             15:{"blue":50, "red":0, "green":0, "white":0}
             }
 """
-Control Matrix Voice LEDs
+Make an image for Matrix Voice Everloop LED driver.
 Arguments:
-ledCount - total number of ring LEDs
+ledCount - total number of Everloop ring LEDs
 ledOn - Dictionary containing integer key of which LED to turn on (0-17).
         Value is another dictionary containing brightness key of blue, red, green, and white
         with integer value (0-255).
+Returns an image that can be sent to the Everloop driver port.
 """
-def ring(led_count, ledOn):
+def ring_image(led_count, ledOn):
     # Create a new driver config
     driver_config_proto = driver_pb2.DriverConfig()
     # Create an empty Everloop image
@@ -103,35 +104,37 @@ class LedRing(MycroftSkill):
                        self.handler_audio_output_end)
         self.add_event('mycroft.stop',
                         self.handler_mycroft_stop)
-        self.ring_on = ring(LED_COUNT, ON)
-        self.ring_off = ring(LED_COUNT, OFF)
-        self.ring_think = ring(LED_COUNT, THINK)
-        self.ring_speak = ring(LED_COUNT, SPEAK)
+        self.add_event('mycroft.audio.service.resume',
+                        self.handler_mycroft_audio_service_resume)
+        # Make Everloop images.
+        self.ring_on = ring_image(LED_COUNT, ON)
+        self.ring_off = ring_image(LED_COUNT, OFF)
+        self.ring_think = ring_image(LED_COUNT, THINK)
+        self.ring_speak = ring_image(LED_COUNT, SPEAK)
 
     def handler_wakeword(self, message):
-        # Send driver configuration through ZMQ socket
+        # Send Everloop image to Everloop driver port through ZMQ socket.
         self.socket.send(self.ring_on)
 
     def handler_record_end(self, message):
-        # Send driver configuration through ZMQ socket
         self.socket.send(self.ring_off)
 
     def handler_utterance(self, message):
-        # Send driver configuration through ZMQ socket
         self.socket.send(self.ring_think)
 
     def handler_audio_output_start(self, message):
-        # Send driver configuration through ZMQ socket
         self.socket.send(self.ring_speak)
 
     def handler_audio_output_end(self, message):
-        # Send driver configuration through ZMQ socket
         self.socket.send(self.ring_off)
 
     def handler_mycroft_stop(self, message):
-        # Send driver configuration through ZMQ socket
         self.socket.send(self.ring_off)
 
+    def handler_mycroft_audio_service_resume(self, message):
+        self.socket.send(self.ring_off)
+
+    # Clean up ZMQ socket and context on shutdown.
     def shutdown(self):
         self.socket.close()
         self.context.term
