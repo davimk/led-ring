@@ -80,7 +80,9 @@ def ring_image(led_count, ledOn):
     # Store the Everloop image in driver configuration
     driver_config_proto.image.led.extend(image)
     return driver_config_proto.SerializeToString()
-
+"""
+Listen for messages and control Everloop LEDs in response.
+"""
 class LedRing(MycroftSkill):
     def __init__(self):
         MycroftSkill.__init__(self)
