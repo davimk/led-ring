@@ -7,7 +7,7 @@ Sends commands to matrix voice everloop led ring driver.
 ## Examples
 
 ## Credits
-David Matheson
+davimk
 
 ## Category
 **Configuration**
